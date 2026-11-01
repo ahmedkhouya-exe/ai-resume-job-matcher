@@ -1,13 +1,5 @@
-from pathlib import Path
-import sys
-
 import pytest
 
-# Make the project root importable when pytest is invoked from the repository root
-# through different launchers (pytest or python -m pytest).
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
 from matcher import analyze_match, calculate_text_similarity, extract_skills
 
