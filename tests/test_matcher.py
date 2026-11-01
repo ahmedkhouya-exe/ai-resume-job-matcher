@@ -1,4 +1,14 @@
+from pathlib import Path
+import sys
+
 import pytest
+
+# Make the project root importable when pytest is invoked from the repository root
+# through different launchers (pytest or python -m pytest).
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from matcher import analyze_match, calculate_text_similarity, extract_skills
 
 
@@ -21,7 +31,10 @@ def test_similarity_empty_text_is_zero():
 
 
 def test_analyze_match_finds_missing_skills():
-    result = analyze_match("Python developer. Used pandas, SQL, and Git on data analysis projects.", "We need Python, SQL, Docker, AWS, and Git experience.")
+    result = analyze_match(
+        "Python developer. Used pandas, SQL, and Git on data analysis projects.",
+        "We need Python, SQL, Docker, AWS, and Git experience.",
+    )
     assert set(result.matched_skills) == {"python", "sql", "git"}
     assert set(result.missing_skills) == {"docker", "aws"}
     assert result.skill_coverage == 60.0
@@ -29,8 +42,10 @@ def test_analyze_match_finds_missing_skills():
 
 
 def test_empty_inputs_raise_clear_errors():
-    with pytest.raises(ValueError, match="Resume text"): analyze_match("  ", "Python engineer")
-    with pytest.raises(ValueError, match="Job description"): analyze_match("Python developer", "")
+    with pytest.raises(ValueError, match="Resume text"):
+        analyze_match("  ", "Python engineer")
+    with pytest.raises(ValueError, match="Job description"):
+        analyze_match("Python developer", "")
 
 
 def test_job_without_supported_skills_uses_text_similarity():
