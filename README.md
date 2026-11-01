@@ -1,12 +1,12 @@
 # 🎯 AI Resume & Job Matcher
 
-An NLP-powered Streamlit app that compares resume text with a job description, estimates text similarity, and highlights skills detected or not detected in the resume.
+An NLP-powered Streamlit app with a polished, responsive dashboard that compares resume text with a job description, estimates text similarity, and highlights skills detected or not detected in the resume.
 
 > **Important:** The score is a transparent heuristic for exploration, not a hiring probability or an assessment of a person's worth. The built-in skill vocabulary is curated and incomplete. A missing skill means it was not detected in the submitted text, not necessarily that the candidate lacks it.
 
 ## Features
 
-- Paste resume text or upload a `.txt`, `.pdf`, or `.docx` resume.
+- Paste resume text or upload a `.txt`, `.pdf`, or `.docx` resume.\n- Responsive SaaS-style interface with a branded hero, sidebar workflow, input cards, and dashboard results.\n- One-click sample data to explore the app without preparing your own inputs.\n- Visual match-score ring, metric cards, and skill chips.
 - Paste a target job description.
 - Calculate TF-IDF cosine similarity between the two texts.
 - Detect skills from a curated, editable vocabulary.
@@ -16,7 +16,7 @@ An NLP-powered Streamlit app that compares resume text with a job description, e
 
 ## Preview
 
-Sample resume and job-description text are available in `examples/` for a quick local demo. Add verified application screenshots to `screenshots/` after launching the app.
+Sample resume and job-description text are available in `examples/` for a quick local demo. Launch the app locally to inspect the redesigned interface; add screenshots only after capturing the actual running app.
 
 ## How the score works
 
@@ -78,7 +78,7 @@ This project does not implement a database or intentionally save resume content.
 
 ## Roadmap
 
-- [ ] Add anonymized example inputs and verified screenshots.
+- [x] Add anonymized sample inputs.\n- [ ] Capture verified screenshots of the redesigned interface.
 - [ ] Improve synonym handling and language support.
 - [ ] Add more domain-specific skill vocabularies.
 - [ ] Deploy a public demo with an explicit privacy notice.
