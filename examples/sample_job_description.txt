@@ -1,0 +1,3 @@
+Junior Data Analyst
+
+We are looking for a curious junior analyst who can use Python, SQL, pandas, NumPy, and data visualization to explore datasets and communicate insights. Experience with Git, Docker, AWS, and Power BI is a plus. Strong communication, teamwork, and problem solving skills are important.

@@ -1,0 +1,10 @@
+Junior Data Analyst / Python Developer
+
+Summary
+Computer engineering student interested in data analysis and software development.
+
+Skills
+Python, SQL, pandas, NumPy, Git, GitHub, Linux, HTML, CSS, JavaScript, teamwork, communication, problem solving.
+
+Projects
+Built a Streamlit dashboard that analyzes a dataset with pandas and scikit-learn. Wrote automated tests with pytest and documented setup instructions in GitHub.
