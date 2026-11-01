@@ -1,54 +1,52 @@
-"""Explainable NLP matching logic for resume and job-description text."""
-from __future__ import annotations
+from io import BytesIO
 import re
-from dataclasses import dataclass
-from typing import Iterable
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+from pathlib import Path
 
-SKILLS: tuple[str, ...] = (
-    "python", "java", "c++", "c#", "javascript", "typescript", "sql", "html", "css", "react", "angular", "vue", "node.js", "flask", "django", "fastapi", "streamlit", "machine learning", "deep learning", "natural language processing", "nlp", "pandas", "numpy", "scikit-learn", "tensorflow", "pytorch", "data analysis", "data visualization", "statistics", "power bi", "tableau", "excel", "aws", "azure", "gcp", "docker", "kubernetes", "git", "github", "linux", "bash", "ci/cd", "api", "rest api", "mongodb", "postgresql", "mysql", "mariadb", "redis", "communication", "teamwork", "problem solving", "project management", "agile", "scrum", "cybersecurity", "networking", "computer networks", "oop", "object-oriented programming", "testing", "pytest", "selenium",
-)
+SKILLS = [
+    "python", "java", "javascript", "typescript", "sql", "mysql", "mariadb",
+    "html", "css", "react", "node.js", "git", "github", "docker", "linux", "bash",
+    "machine learning", "data analysis", "pandas", "numpy", "scikit-learn",
+    "communication", "problem solving", "teamwork", "testing", "documentation",
+    "dashboard development", "data visualization", "statistics", "excel", "power bi",
+    "tableau", "api development", "cloud", "aws", "azure", "c++", "c"
+]
 
-@dataclass(frozen=True)
-class MatchResult:
-    match_score: int
-    text_similarity: float
-    skill_coverage: float
-    matched_skills: list[str]
-    missing_skills: list[str]
-    resume_skills: list[str]
-    job_skills: list[str]
-    summary: str
+def extract_text(filename: str, content: bytes) -> str:
+    suffix = Path(filename).suffix.lower()
+    if suffix == ".txt":
+        return content.decode("utf-8", errors="replace")
+    if suffix == ".pdf":
+        from pypdf import PdfReader
+        return "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(content)).pages)
+    if suffix == ".docx":
+        from docx import Document
+        return "\n".join(p.text for p in Document(BytesIO(content)).paragraphs)
+    raise ValueError("Unsupported file type. Use TXT, PDF, or DOCX.")
 
+def _has(text: str, skill: str) -> bool:
+    pattern = r"(?<![a-z0-9+#.])" + re.escape(skill.lower()) + r"(?![a-z0-9+#.])"
+    return bool(re.search(pattern, text.lower()))
 
-def extract_skills(text: str, skills: Iterable[str] = SKILLS) -> list[str]:
-    normalized = re.sub(r"\s+", " ", text or "").strip().lower()
-    return [skill for skill in skills if re.search(r"(?<![\w+#.])" + re.escape(skill.lower()) + r"(?![\w+#.])", normalized)]
-
-
-def calculate_text_similarity(resume_text: str, job_description: str) -> float:
-    resume, job = (resume_text or "").strip(), (job_description or "").strip()
-    if not resume or not job: return 0.0
+def match_resume_to_job(resume: str, job: str) -> dict:
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.metrics.pairwise import cosine_similarity
     try:
-        matrix = TfidfVectorizer(stop_words="english", ngram_range=(1, 2)).fit_transform([resume, job])
-        return round(float(cosine_similarity(matrix[0:1], matrix[1:2])[0, 0]) * 100, 2)
-    except ValueError: return 0.0
-
-
-def analyze_match(resume_text: str, job_description: str) -> MatchResult:
-    if not (resume_text or "").strip(): raise ValueError("Resume text cannot be empty.")
-    if not (job_description or "").strip(): raise ValueError("Job description cannot be empty.")
-    resume_skills, job_skills = extract_skills(resume_text), extract_skills(job_description)
-    resume_set = set(resume_skills)
-    matched = [s for s in job_skills if s in resume_set]
-    missing = [s for s in job_skills if s not in resume_set]
-    similarity = calculate_text_similarity(resume_text, job_description)
-    if job_skills:
-        coverage = round(len(matched) / len(job_skills) * 100, 2)
-        overall = round(0.6 * similarity + 0.4 * coverage)
-        summary = f"Your resume includes {len(matched)} of {len(job_skills)} skills detected in the job description. Review the missing-skill list and ensure your resume accurately reflects your experience."
-    else:
-        coverage, overall = 0.0, round(similarity)
-        summary = "No skills from the built-in vocabulary were detected in the job description, so the score uses text similarity only."
-    return MatchResult(max(0,min(100,int(overall))), similarity, coverage, matched, missing, resume_skills, job_skills, summary)
+        matrix = TfidfVectorizer(stop_words="english").fit_transform([resume, job])
+        similarity = round(float(cosine_similarity(matrix[0:1], matrix[1:2])[0][0]) * 100)
+    except ValueError:
+        similarity = 0
+    job_skills = [s for s in SKILLS if _has(job, s)]
+    matched = [s for s in job_skills if _has(resume, s)]
+    missing = [s for s in job_skills if s not in matched]
+    coverage = round(100 * len(matched) / len(job_skills)) if job_skills else 0
+    suggestions = []
+    if missing:
+        suggestions.append("If you genuinely have these skills, add evidence of them: " + ", ".join(missing[:6]) + ".")
+    if similarity < 35:
+        suggestions.append("Use relevant terminology from the job description where it accurately reflects your experience.")
+    if not matched:
+        suggestions.append("Add concrete projects or work examples that demonstrate relevant skills.")
+    suggestions.append("Use measurable outcomes where possible, such as time saved, users supported, or accuracy improved.")
+    return {"match_score": round(.55 * similarity + .45 * coverage), "similarity": similarity,
+            "skill_coverage": coverage, "matched_skills": matched, "missing_skills": missing,
+            "suggestions": suggestions}
