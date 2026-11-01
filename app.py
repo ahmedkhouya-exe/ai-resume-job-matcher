@@ -1,221 +1,118 @@
-"""Polished Streamlit UI for the AI Resume & Job Matcher."""
-from __future__ import annotations
-
-from pathlib import Path
-import html
-import io
-
 import streamlit as st
-from matcher import analyze_match
+from matcher import extract_text, match_resume_to_job
 
-st.set_page_config(page_title="TalentLens | Resume Matcher", page_icon="🎯", layout="wide")
+st.set_page_config(page_title="TalentLens | Career Match", page_icon="◆", layout="wide", initial_sidebar_state="collapsed")
 
 st.markdown("""
 <style>
-.stApp {background:#f5f7fc;color:#17233d}
-.block-container {max-width:1240px;padding-top:2rem;padding-bottom:3rem}
-[data-testid="stHeader"] {background:rgba(245,247,252,.9)}
-[data-testid="stSidebar"] {background:#101a31}
-[data-testid="stSidebar"] * {color:#e2e8f0}
-[data-testid="stSidebar"] hr {border-color:rgba(255,255,255,.14)}
-.brand {display:flex;align-items:center;gap:.7rem;font-weight:800;font-size:1.15rem;margin-bottom:1.4rem}
-.brand-mark {display:inline-flex;width:2.35rem;height:2.35rem;align-items:center;justify-content:center;border-radius:.8rem;color:white;background:linear-gradient(135deg,#6366f1,#06b6d4);font-size:1.25rem}
-.hero {padding:1.8rem 2rem;border-radius:1.35rem;background:linear-gradient(115deg,#111b35,#243b72 62%,#155e75);color:white;margin:.3rem 0 1.5rem;box-shadow:0 18px 45px rgba(30,58,138,.14)}
-.hero-kicker {font-size:.75rem;font-weight:750;letter-spacing:.12em;text-transform:uppercase;color:#a5f3fc;margin-bottom:.7rem}
-.hero h1 {color:white;font-size:clamp(1.8rem,3vw,2.65rem);line-height:1.12;letter-spacing:-.045em;margin:0 0 .75rem}
-.hero p {color:#dbeafe;max-width:700px;margin:0;font-size:1rem;line-height:1.65}
-.hero-tags {display:flex;gap:.55rem;flex-wrap:wrap;margin-top:1.25rem}
-.hero-tag {font-size:.76rem;padding:.35rem .65rem;border:1px solid rgba(255,255,255,.2);border-radius:99px;color:#f1f5f9;background:rgba(255,255,255,.07)}
-.section-heading {font-size:1.1rem;font-weight:750;letter-spacing:-.02em;color:#17233d;margin:.3rem 0 .25rem}
-.section-sub {color:#64748b;font-size:.88rem;margin-bottom:1rem}
-[data-testid="stVerticalBlockBorderWrapper"] {border-color:#e4eaf4!important;border-radius:1rem!important;background:rgba(255,255,255,.9);box-shadow:0 5px 18px rgba(15,23,42,.025)}
-[data-testid="stTextArea"] textarea {border-radius:.8rem;border-color:#dbe3ef;background:#fbfcff;font-size:.92rem;line-height:1.55}
-[data-testid="stFileUploader"] section {border-radius:.8rem;border-color:#cbd5e1;background:#f8faff}
-.stButton>button[kind="primary"] {border:0;border-radius:.8rem;padding:.7rem 1rem;font-weight:750;background:linear-gradient(100deg,#4f46e5,#0891b2);box-shadow:0 8px 18px rgba(79,70,229,.18)}
-.stButton>button {border-radius:.75rem;font-weight:650}
-.metric-card {height:100%;min-height:125px;padding:1.05rem 1.15rem;background:white;border:1px solid #e4eaf4;border-radius:1rem;box-shadow:0 5px 18px rgba(15,23,42,.025)}
-.metric-label {color:#64748b;font-size:.82rem;font-weight:650;margin-bottom:.55rem}
-.metric-value {color:#17233d;font-size:2rem;line-height:1;font-weight:800;letter-spacing:-.05em}
-.metric-note {color:#64748b;font-size:.76rem;margin-top:.55rem}
-.score-wrap {display:flex;align-items:center;gap:1.25rem;padding:1.35rem;border-radius:1rem;background:linear-gradient(110deg,#eef2ff,#ecfeff);border:1px solid #dbeafe;margin:.5rem 0 1rem}
-.score-ring {width:112px;height:112px;flex:0 0 112px;display:flex;align-items:center;justify-content:center;border-radius:50%}
-.score-inner {width:86px;height:86px;border-radius:50%;background:white;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:inset 0 0 0 1px #e2e8f0}
-.score-number {font-size:1.65rem;line-height:1;font-weight:850;color:#17233d;letter-spacing:-.05em}
-.score-small {color:#64748b;font-size:.65rem;margin-top:.2rem}
-.score-title {font-size:1.1rem;font-weight:800;color:#17233d;margin-bottom:.35rem}
-.score-copy {font-size:.87rem;color:#475569;line-height:1.55}
-.skill-list {display:flex;flex-wrap:wrap;gap:.45rem;margin:.6rem 0 .3rem}
-.skill-pill {display:inline-block;padding:.4rem .65rem;border-radius:99px;font-size:.8rem;font-weight:650;border:1px solid}
-.skill-good {background:#ecfdf5;border-color:#a7f3d0;color:#047857}
-.skill-missing {background:#fff7ed;border-color:#fed7aa;color:#c2410c}
-.empty-state {padding:1rem;border:1px dashed #cbd5e1;border-radius:.8rem;background:#f8fafc;color:#64748b;font-size:.88rem}
-.privacy-note {color:#64748b;font-size:.78rem;line-height:1.55;padding:.8rem 0}
-@media(max-width:700px){.block-container{padding:1rem .8rem 2rem}.hero{padding:1.35rem;border-radius:1rem}.score-wrap{flex-direction:column;align-items:flex-start}}
+:root{--bg:#07131f;--panel:#0d1b29;--line:#20384a;--text:#f4f7fb;--muted:#a8b8c8;--green:#39d98a;--amber:#f6bd60}
+html,body,[data-testid="stAppViewContainer"],.stApp{background:#07131f!important;color:#f4f7fb!important}
+[data-testid="stHeader"]{background:transparent!important}
+.block-container{max-width:1440px;padding:2rem 3rem 4rem!important}
+h1,h2,h3,h4,strong{color:#f4f7fb!important;letter-spacing:-.025em}
+p,li,label,.stMarkdown,[data-testid="stCaptionContainer"]{color:#a8b8c8}
+a{color:#39d98a!important}
+.hero-kicker{font-size:.76rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:#39d98a;margin-bottom:1.2rem}
+.hero-title{font-size:clamp(2.5rem,4vw,4.5rem);line-height:1.04;font-weight:850;letter-spacing:-.055em;color:#f7fafc;margin:0 0 1.2rem}
+.hero-copy{font-size:1.06rem;line-height:1.75;max-width:550px;color:#aebdca;margin-bottom:1.7rem}
+.feature{display:flex;gap:14px;align-items:flex-start;margin:1.2rem 0}
+.feature-icon{width:46px;height:46px;flex:0 0 46px;border-radius:12px;background:#102b2a;border:1px solid #1a4940;display:flex;align-items:center;justify-content:center;color:#39d98a;font-size:1.4rem}
+.feature-title{font-weight:750;color:#f2f6f9;margin-bottom:.25rem}.feature-copy{color:#96a9b9;line-height:1.5;font-size:.93rem}
+.panel{background:linear-gradient(145deg,#0d1c2a,#0b1925);border:1px solid #20384a;border-radius:22px;padding:1.5rem}
+.panel-head{font-size:1.05rem;font-weight:800;color:#f6f8fa;margin-bottom:.25rem}.panel-sub{color:#91a5b7;font-size:.88rem;margin-bottom:1.2rem}
+.score-circle{width:210px;height:210px;border-radius:50%;border:12px solid #203643;border-top-color:#39d98a;border-right-color:#39d98a;border-bottom-color:#39d98a;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:1.2rem auto;background:radial-gradient(circle,#102536,#0b1925 72%)}
+.score-number{font-size:3rem;line-height:1;font-weight:850;color:#fff}.score-label{font-size:1rem;font-weight:700;color:#39d98a;margin-top:.5rem}
+.section-label{font-size:1rem;font-weight:800;color:#f6f8fa;margin:1rem 0 .8rem}
+.chip{display:inline-block;padding:.45rem .62rem;border-radius:8px;font-size:.82rem;margin:0 .3rem .4rem 0;border:1px solid}
+.chip-good{color:#7aefb1;background:#0d3027;border-color:#1d5d43}.chip-missing{color:#ffd083;background:#342719;border-color:#76542a}
+.mini-stat{border:1px solid #20384a;background:#0b1925;border-radius:14px;padding:.9rem 1rem}.mini-label{font-size:.75rem;color:#91a5b7;margin-bottom:.3rem}.mini-value{font-size:1.45rem;font-weight:800;color:#f5f8fa}
+.stButton>button{background:linear-gradient(100deg,#16875b,#24c780)!important;color:#04150f!important;border:0!important;border-radius:12px!important;font-weight:800!important;min-height:3rem}
+.stButton>button:hover{filter:brightness(1.08);box-shadow:0 0 0 2px #2fd48c33}
+.stTextArea textarea,.stTextInput input,[data-testid="stFileUploaderDropzone"]{background:#0a1723!important;color:#f4f7fb!important;border:1px solid #2b4355!important;border-radius:12px!important;-webkit-text-fill-color:#f4f7fb!important;caret-color:#39d98a!important}
+.stTextArea textarea::placeholder,.stTextInput input::placeholder{color:#71879a!important;-webkit-text-fill-color:#71879a!important;opacity:1!important}
+[data-testid="stFileUploaderDropzone"] *{color:#d8e2eb!important}[data-testid="stFileUploaderDropzone"] button{background:#142839!important;color:#f4f7fb!important;border:1px solid #365064!important}
+hr{border-color:#20384a!important}
+@media(max-width:900px){.block-container{padding:1.2rem 1rem 3rem!important}.hero-title{font-size:2.7rem}.score-circle{width:175px;height:175px}.score-number{font-size:2.4rem}}
 </style>
 """, unsafe_allow_html=True)
 
-
-def extract_uploaded_text(upload) -> str:
-    """Extract selectable text from supported resume formats."""
-    suffix, raw = Path(upload.name).suffix.lower(), upload.getvalue()
-    if suffix == ".txt":
-        return raw.decode("utf-8", errors="replace")
-    if suffix == ".pdf":
-        from pypdf import PdfReader
-        reader = PdfReader(io.BytesIO(raw))
-        return "\n".join(page.extract_text() or "" for page in reader.pages)
-    if suffix == ".docx":
-        from docx import Document
-        document = Document(io.BytesIO(raw))
-        return "\n".join(paragraph.text for paragraph in document.paragraphs)
-    raise ValueError("Unsupported file type. Upload TXT, PDF, or DOCX.")
-
-
-def skill_pills(skills: list[str], kind: str, empty_message: str) -> str:
-    if not skills:
-        return f'<div class="empty-state">{html.escape(empty_message)}</div>'
-    css_class = "skill-good" if kind == "good" else "skill-missing"
-    pills = "".join(f'<span class="skill-pill {css_class}">{html.escape(skill)}</span>' for skill in skills)
-    return f'<div class="skill-list">{pills}</div>'
-
-
-with st.sidebar:
-    st.markdown('<div class="brand"><span class="brand-mark">✦</span> TalentLens</div>', unsafe_allow_html=True)
-    st.markdown("### Your workflow")
-    st.markdown("**01**  Add your resume")
-    st.markdown("**02**  Paste a target role")
-    st.markdown("**03**  Review your match")
-    st.divider()
-    st.markdown("### What gets analyzed?")
-    st.markdown("- Text similarity using TF-IDF\n- Skills found in both texts\n- Job skills not detected in the resume")
-    st.divider()
-    st.markdown("### Built with")
-    st.markdown("Python · Streamlit · scikit-learn")
-    st.caption("A portfolio project by Ahmed Khouya")
-    st.markdown('<p class="privacy-note">Resume text is analyzed during the current app session. This project does not intentionally save submitted resume content. Avoid using sensitive personal data in public demos.</p>', unsafe_allow_html=True)
+def chips(items, kind):
+    if not items:
+        return '<span style="color:#91a5b7">Nothing detected yet.</span>'
+    return "".join(f'<span class="chip {kind}">{s.title()}</span>' for s in items)
 
 st.markdown("""
-<div class="hero">
-  <div class="hero-kicker">AI-powered career toolkit</div>
-  <h1>Make your next application<br>more intentional.</h1>
-  <p>Compare your resume with a job description, understand the overlap, and spot skills you may want to highlight — all in one clear dashboard.</p>
-  <div class="hero-tags">
-    <span class="hero-tag">✦ Explainable matching</span>
-    <span class="hero-tag">⌁ Skill gap insights</span>
-    <span class="hero-tag">↗ Resume analysis</span>
-  </div>
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:2rem">
+ <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#39d98a,#159d78);display:flex;align-items:center;justify-content:center;color:#062016;font-size:1.5rem;font-weight:900">◆</div>
+ <div style="font-size:1.35rem;font-weight:850;color:#f5f8fa">Talent<span style="color:#39d98a">Lens</span></div>
+ <div style="margin-left:auto;color:#7f95a8;font-size:.8rem;letter-spacing:.08em;text-transform:uppercase">AI career toolkit</div>
 </div>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="section-heading">Build your match report</div>', unsafe_allow_html=True)
-st.markdown('<div class="section-sub">Add both pieces of text to get a transparent, explainable comparison.</div>', unsafe_allow_html=True)
-
-sample_resume_path = Path(__file__).parent / "examples" / "sample_resume.txt"
-sample_job_path = Path(__file__).parent / "examples" / "sample_job_description.txt"
-sample_resume = sample_resume_path.read_text(encoding="utf-8") if sample_resume_path.exists() else ""
-sample_job = sample_job_path.read_text(encoding="utf-8") if sample_job_path.exists() else ""
-
-action_col, hint_col = st.columns([1, 2])
-with action_col:
-    if st.button("✦ Load sample data", use_container_width=True):
-        st.session_state["resume_input"] = sample_resume
-        st.session_state["job_input"] = sample_job
-        st.session_state["match_result"] = None
-with hint_col:
-    st.caption("New here? Load the example resume and job description to try the app instantly.")
-
-resume_col, job_col = st.columns(2, gap="large")
-with resume_col:
-    with st.container(border=True):
-        st.markdown("#### 01 · Your resume")
-        st.caption("Upload a file or paste the text below.")
-        upload = st.file_uploader("Resume file", type=["txt", "pdf", "docx"], help="Supported: TXT, PDF and DOCX. Scanned PDFs may not contain extractable text.", key="resume_upload")
-        resume_text = st.text_area("Resume content", height=260, placeholder="Paste your summary, experience, education, projects and skills...", key="resume_input")
-        if upload is not None and not resume_text.strip():
-            try:
-                resume_text = extract_uploaded_text(upload)
-                if not resume_text.strip():
-                    st.warning("No selectable text found. If this is a scanned PDF, paste its text manually.")
-            except Exception as exc:
-                st.error(f"Could not read this file ({type(exc).__name__}). Try another file or paste the text.")
-                resume_text = ""
-
-with job_col:
-    with st.container(border=True):
-        st.markdown("#### 02 · Target job")
-        st.caption("Paste the full job posting for a more useful comparison.")
-        job_description = st.text_area("Job description", height=320, placeholder="Paste the role summary, responsibilities, required skills and qualifications...", key="job_input")
-        st.markdown('<div class="privacy-note">Tip: include the required skills section as well as the responsibilities.</div>', unsafe_allow_html=True)
-
-analyze_col, note_col = st.columns([1, 2])
-with analyze_col:
-    analyze_clicked = st.button("✦ Analyze my match", type="primary", use_container_width=True)
-with note_col:
-    st.caption("Your score is a text-based estimate, not a hiring probability or a guarantee of job suitability.")
-
-if analyze_clicked:
-    if not resume_text.strip():
-        st.error("Please upload a resume or paste your resume text.")
-        st.session_state["match_result"] = None
-    elif not job_description.strip():
-        st.error("Please paste the target job description.")
-        st.session_state["match_result"] = None
-    else:
-        try:
-            st.session_state["match_result"] = analyze_match(resume_text, job_description)
-        except ValueError as exc:
-            st.error(str(exc))
-            st.session_state["match_result"] = None
-
-result = st.session_state.get("match_result")
-if result is not None:
-    st.divider()
-    st.markdown('<div class="section-heading">Your match report</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-sub">Use these insights to review how clearly your experience maps to the role.</div>', unsafe_allow_html=True)
-    score = int(result.match_score)
-    ring_degrees = score * 3.6
-    st.markdown(f"""
-    <div class="score-wrap">
-      <div class="score-ring" style="background:conic-gradient(#4f46e5 0deg,#0891b2 {ring_degrees}deg,#dbeafe {ring_degrees}deg,#dbeafe 360deg)">
-        <div class="score-inner"><div class="score-number">{score}%</div><div class="score-small">match estimate</div></div>
-      </div>
-      <div><div class="score-title">Your resume-to-role snapshot</div><div class="score-copy">{html.escape(result.summary)}<br><br>This is an approximate text-based signal. It cannot judge your full experience, context, potential or suitability.</div></div>
-    </div>
+hero, dash = st.columns([.9, 1.1], gap="large")
+with hero:
+    st.markdown("""
+    <div class="hero-kicker">Your next career move, made clearer</div>
+    <div class="hero-title">See how well<br>you match.<br><span style="color:#39d98a">Land interviews.</span></div>
+    <div class="hero-copy">Compare your resume with a target role. Understand your strengths, spot missing keywords, and make your next application more intentional.</div>
+    <div class="feature"><div class="feature-icon">◎</div><div><div class="feature-title">Explainable match scoring</div><div class="feature-copy">See how closely your resume aligns with the job requirements.</div></div></div>
+    <div class="feature"><div class="feature-icon">↗</div><div><div class="feature-title">Actionable skill insights</div><div class="feature-copy">Find relevant skills already in your resume and identify potential gaps.</div></div></div>
+    <div class="feature"><div class="feature-icon">▤</div><div><div class="feature-title">Tailored to the job</div><div class="feature-copy">Improve your resume honestly with real examples and evidence.</div></div></div>
     """, unsafe_allow_html=True)
+with dash:
+    if "result" not in st.session_state:
+        st.markdown("""
+        <div class="panel"><div style="display:flex;align-items:center;gap:12px"><div style="font-size:2rem;color:#39d98a">◉</div><div><div class="panel-head">Job Match Score</div><div class="panel-sub" style="margin:0">Your target role · Resume analysis</div></div></div>
+        <div class="score-circle"><div class="score-number">--%</div><div class="score-label">Ready to analyze</div></div>
+        <div style="text-align:center;color:#91a5b7;font-size:.9rem;margin-bottom:1rem">Your score and keyword insights will appear here after analysis.</div><hr>
+        <div class="section-label">✓ Matched keywords</div><span class="chip chip-good">Skills from both texts</span><span class="chip chip-good">Relevant experience</span>
+        <div class="section-label" style="margin-top:1rem">⚠ Missing keywords</div><span class="chip chip-missing">Potential skill gaps</span><span class="chip chip-missing">Role requirements</span></div>
+        """, unsafe_allow_html=True)
+    else:
+        r = st.session_state["result"]
+        score = r["match_score"]
+        label = "Strong Match" if score >= 75 else ("Good Match" if score >= 50 else "Room to Improve")
+        st.markdown(f"""
+        <div class="panel"><div style="display:flex;align-items:center;gap:12px"><div style="font-size:2rem;color:#39d98a">◉</div><div><div class="panel-head">Job Match Score</div><div class="panel-sub" style="margin:0">Resume · Target job</div></div></div>
+        <div class="score-circle"><div class="score-number">{score}%</div><div class="score-label">{label}</div></div>
+        <div style="text-align:center;color:#a8b8c8;font-size:.9rem;margin-bottom:1rem">Text-based estimate, not a hiring probability.</div>
+        <div class="section-label">Matched keywords</div>{chips(r["matched_skills"],"chip-good")}
+        <div class="section-label" style="margin-top:1rem">Missing keywords</div>{chips(r["missing_skills"],"chip-missing")}</div>
+        """, unsafe_allow_html=True)
+        q1,q2=st.columns(2)
+        q1.markdown(f'<div class="mini-stat"><div class="mini-label">TEXT SIMILARITY</div><div class="mini-value">{r["similarity"]}%</div></div>',unsafe_allow_html=True)
+        q2.markdown(f'<div class="mini-stat"><div class="mini-label">SKILL COVERAGE</div><div class="mini-value">{r["skill_coverage"]}%</div></div>',unsafe_allow_html=True)
 
-    m1, m2, m3 = st.columns(3, gap="medium")
-    with m1:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Text similarity</div><div class="metric-value">{result.text_similarity:.1f}%</div><div class="metric-note">TF-IDF term overlap</div></div>', unsafe_allow_html=True)
-    with m2:
-        coverage_label = f"{result.skill_coverage:.1f}%" if result.job_skills else "N/A"
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Skill coverage</div><div class="metric-value">{coverage_label}</div><div class="metric-note">Detected job skills found in resume</div></div>', unsafe_allow_html=True)
-    with m3:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Skills detected</div><div class="metric-value">{len(result.resume_skills)}</div><div class="metric-note">From the built-in vocabulary</div></div>', unsafe_allow_html=True)
+st.markdown('<div style="height:1.4rem"></div><div class="panel"><div class="panel-head">Build your match report</div><div class="panel-sub">Add your resume and target job to generate a personalized comparison.</div></div>',unsafe_allow_html=True)
+left,right=st.columns(2,gap="large")
+with left:
+    st.markdown("#### 01 · Your resume")
+    st.caption("Upload a file or paste the text below.")
+    upload=st.file_uploader("Resume file",type=["txt","pdf","docx"])
+    default=""
+    if upload:
+        try: default=extract_text(upload.name,upload.getvalue())
+        except Exception as exc: st.error(f"Could not read resume: {exc}")
+    resume=st.text_area("Resume content",value=default,height=230,placeholder="Paste your summary, skills, work experience, education and projects…")
+with right:
+    st.markdown("#### 02 · Target job")
+    st.caption("Paste the full job posting for a more useful comparison.")
+    job=st.text_area("Job description",height=288,placeholder="Paste the role summary, responsibilities, and required skills…")
+    st.caption("Tip: include required skills as well as responsibilities.")
 
-    good_col, gap_col = st.columns(2, gap="large")
-    with good_col:
-        with st.container(border=True):
-            st.markdown("#### ✓ Skills found in both")
-            st.caption("Skills detected in the job description and your resume.")
-            st.markdown(skill_pills(result.matched_skills, "good", "No skills from the built-in list matched. Try reviewing the wording in both texts."), unsafe_allow_html=True)
-    with gap_col:
-        with st.container(border=True):
-            st.markdown("#### ↗ Skills not detected")
-            st.caption("These appeared in the job description but were not found in your resume text.")
-            st.markdown(skill_pills(result.missing_skills, "missing", "No missing skills detected from the built-in list."), unsafe_allow_html=True)
-            if result.missing_skills:
-                st.caption("Only add a skill to your resume if it genuinely reflects your knowledge or experience.")
-
-    with st.expander("Explore all detected skills and scoring details"):
-        detected_a, detected_b = st.columns(2)
-        with detected_a:
-            st.markdown("**Detected in resume**")
-            st.write(", ".join(result.resume_skills) or "None detected")
-        with detected_b:
-            st.markdown("**Detected in job description**")
-            st.write(", ".join(result.job_skills) or "None detected")
-        st.markdown("**Scoring method**  \n60% × TF-IDF text similarity + 40% × detected skill coverage. If no supported skills are detected in the job description, the score falls back to text similarity.")
-        st.warning("The skill vocabulary is curated and incomplete. Similarity is based on shared terms, not deep semantic understanding. A missing skill means it was not detected in the text — it does not prove that you lack it.")
-
-st.divider()
-st.markdown('<div class="privacy-note">TalentLens is an educational portfolio project. It does not make hiring decisions, rank candidates or intentionally store resume text. For public deployments, review hosting-provider logs and retention settings before using real personal data.</div>', unsafe_allow_html=True)
+b1,b2=st.columns([1,1.6],gap="medium")
+with b1: sample=st.button("✦ Load sample data",use_container_width=True)
+with b2: st.markdown('<div style="padding:.65rem 0;color:#91a5b7;font-size:.9rem">New here? Load the example resume and job description to try the app instantly.</div>',unsafe_allow_html=True)
+if sample:
+    st.session_state["sample_resume"]="Computer engineering student interested in data analysis and software development. Skills: Python, SQL, pandas, NumPy, Git, GitHub, Linux, HTML, CSS, JavaScript, teamwork, communication, problem solving. Built data dashboard and web application projects."
+    st.session_state["sample_job"]="Junior Data Analyst. We are looking for a curious junior analyst who can use Python, SQL, pandas, NumPy and data visualization to explore datasets and communicate insights. Experience with Git, Docker, AWS and Power BI is a plus. Strong communication, teamwork and problem-solving skills are important."
+    st.rerun()
+if "sample_resume" in st.session_state:
+    st.info("Sample data loaded. Click Analyze my match below to generate the report.")
+    resume=st.session_state["sample_resume"]; job=st.session_state["sample_job"]
+if st.button("✦ Analyze my match",type="primary",use_container_width=True):
+    if not resume.strip() or not job.strip(): st.warning("Add both resume content and a job description first.")
+    else:
+        st.session_state["result"]=match_resume_to_job(resume,job)
+        st.rerun()
+st.markdown('<div style="color:#71879a;font-size:.8rem;text-align:center;margin-top:1.2rem">Your score is a text-based estimate, not a hiring probability or guarantee of job suitability. Resume text is analyzed during this app session.</div>',unsafe_allow_html=True)
