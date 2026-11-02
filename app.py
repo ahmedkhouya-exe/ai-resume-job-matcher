@@ -116,3 +116,45 @@ if st.button("✦ Analyze my match",type="primary",use_container_width=True):
         st.session_state["result"]=match_resume_to_job(resume,job)
         st.rerun()
 st.markdown('<div style="color:#71879a;font-size:.8rem;text-align:center;margin-top:1.2rem">Your score is a text-based estimate, not a hiring probability or guarantee of job suitability. Resume text is analyzed during this app session.</div>',unsafe_allow_html=True)
+
+
+# Day 4 upgrade: actionable recommendations and a downloadable report
+if "result" in st.session_state:
+    result = st.session_state["result"]
+    st.markdown('<div style="height:1rem"></div>', unsafe_allow_html=True)
+    st.markdown('<div class="panel"><div class="panel-head">Your action plan</div><div class="panel-sub">Practical next steps based on this comparison.</div>', unsafe_allow_html=True)
+    for index, suggestion in enumerate(result.get("suggestions", []), start=1):
+        st.markdown(
+            f'<div style="display:flex;gap:12px;align-items:flex-start;margin:.85rem 0">'
+            f'<div style="flex:0 0 30px;height:30px;border-radius:9px;background:#10352b;color:#39d98a;'
+            f'display:flex;align-items:center;justify-content:center;font-weight:800">{index}</div>'
+            f'<div style="color:#dce6ee;line-height:1.6;padding-top:3px">{suggestion}</div></div>',
+            unsafe_allow_html=True,
+        )
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    report_lines = [
+        "TALENTLENS — RESUME MATCH REPORT",
+        "=" * 38,
+        f"Overall match score: {result['match_score']}%",
+        f"Text similarity: {result['similarity']}%",
+        f"Skill coverage: {result['skill_coverage']}%",
+        "",
+        "MATCHED SKILLS",
+        *([f"- {skill.title()}" for skill in result["matched_skills"]] or ["- None detected"]),
+        "",
+        "SKILLS TO REVIEW",
+        *([f"- {skill.title()}" for skill in result["missing_skills"]] or ["- None detected"]),
+        "",
+        "ACTION PLAN",
+        *[f"{i}. {item}" for i, item in enumerate(result.get("suggestions", []), start=1)],
+        "",
+        "Note: This is a text-based estimate, not a hiring probability or guarantee of suitability.",
+    ]
+    st.download_button(
+        "⬇ Download my match report (.txt)",
+        data="\\n".join(report_lines),
+        file_name="talentlens-match-report.txt",
+        mime="text/plain",
+        use_container_width=True,
+    )
