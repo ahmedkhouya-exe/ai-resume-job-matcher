@@ -14,6 +14,7 @@ A dark, green-accented Streamlit career dashboard for comparing resume text with
 - Dark dashboard with responsive styling and high-contrast inputs
 - Upload TXT, PDF, or DOCX resumes or paste resume text
 - Match score, text similarity, skill coverage, matched and missing keywords
+- Personalized action plan and downloadable plain-text match report
 - Sample data, recommendations, unit tests, and GitHub Actions
 
 ## Run locally
