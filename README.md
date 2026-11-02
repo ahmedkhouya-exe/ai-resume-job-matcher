@@ -2,6 +2,16 @@
 
 A dark, green-accented Streamlit career dashboard for comparing resume text with job descriptions.
 
+![TalentLens dashboard](screenshots/dashboard.png)
+
+## Screenshots
+
+### Dashboard and match results
+![TalentLens match score, matched keywords, and missing keywords](screenshots/dashboard.png)
+
+### Resume upload and job description
+![Resume upload and target job input form](screenshots/resume-inputs.png)
+
 ## Features
 - Dark dashboard with responsive styling and high-contrast inputs
 - Upload TXT, PDF, or DOCX resumes or paste resume text
